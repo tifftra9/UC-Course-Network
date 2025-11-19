@@ -124,32 +124,88 @@ write.csv(UCI_clean, "./Cleaned/uci_courses_catalog_CLEAN.csv", row.names = FALS
           fileEncoding = "UTF-8", na = "")
 
 ## UC Santa Cruz ----
-UCSC = read.csv("./Uncleaned/UCSC Uncleaned For Combine.csv", check.names = FALSE)
-
-UCSC_clean = UCSC %>% 
+UCSC = read.csv("./Uncleaned/ucsc_final_cleaned.csv", check.names = FALSE)
   
+UCSC_clean = UCSC %>% 
+  mutate(Prerequisites = str_extract(Prerequisites,
+                                  "Prerequisites?\\(s\\): ?.*?(?:\\.|$)|Prerequisites: ?.*?(?:\\.|$)"),
+         Prerequisites = gsub("Prerequisites?\\(s\\): ?|Prerequisites: ?|\\.", "", Prerequisites),
+         Prerequisites = ifelse(grepl("Enrollment is", Prerequisites), NA, Prerequisites),
+         
+         formerly = str_extract(Description, 
+                                "\\(Formerly,? [^\\)]+\\)|Formerly [^\\)]+\\)?|\\([^)]*formerly[^)]*\\)"),
+         formerly = gsub("\\(Formerly,? |\\.\\)|Formerly |\\.|\\(|\\)", "", formerly),
+         Description = gsub("\\(Formerly,? [^\\)]+\\)|Formerly [^\\)]+\\)?|\\([^)]*formerly[^)]*\\)?", 
+                            "", Description),
+         
+         cannot_credit = str_extract(Description, 
+                               "Students cannot receive credit for (both )?[^\\.]*\\."),
+         cannot_credit = gsub("Students cannot receive credit for (both )?|\\.", 
+                              "", cannot_credit),
+         cannot_credit = gsub("courses|this courses? and |for |this course after they have completed |this course after receiving credit for |this course if they have already received credit |this course if they have previously received credit ", 
+                              "", cannot_credit),
+         Description = gsub("Students cannot receive credit for (both )?[^\\.]*\\.", 
+                            "", Description),
+         
+         may_be = str_extract(Description, "May be[^\\.]+\\."),
+         Description = gsub("May be[^\\.]+\\.", "", Description),
+         
+         prerequisties_des = str_extract(Description, "Prerequisites?\\(s\\): ?[^\\.]*\\.|Prerequisite: ?[^\\.]*\\."),
+         prerequisties_des = gsub("Prerequisites?\\(s\\): ?|Prerequisite: ?|\\.", "", prerequisties_des),
+         Description = gsub("Prerequisite\\(s\\): ?[^\\.]*\\.|Prerequisite: ?[^\\.]*\\.", "", Description),
+         
+         Prerequisites = coalesce(Prerequisites, prerequisties_des),
+         
+         enrollment = str_extract(Description, "Enrollment[^\\.]+\\."),
+         Description = gsub("Enrollment[^\\.]+\\.", "", Description),
+         
+         Cross_Listing = str_extract(Description, "\\(?Also offered[^\\.]+\\. ?\\)?"),
+         Cross_Listing = gsub("\\(?Also offered as |\\.|\\)", "", Cross_Listing),
+         Description = gsub("\\(?Also offered[^\\.]+\\. ?\\)?", "", Description)) %>% 
+  select(-prerequisties_des)
+
+write.csv(UCSC_clean, "./Cleaned/ucsc_courses_catalog_CLEAN.csv", row.names = FALSE, 
+          fileEncoding = "UTF-8", na = "")
 
 ## final dataset ----
 UCD_short = UCD_clean %>% 
-  mutate(Campus = "UCD") %>% 
+  mutate(Campus = "UCD",
+         Units_Min = as.character(Units_Min),
+         Units_Max = as.character(Units_Max)) %>%
   select(Campus,
          Subject, Subject_Code, Course_Code, Title, `Course Description`, 
-         `Prerequisite(s)`, `Cross Listing`, Units_Min, Units_Max)
+         `Prerequisite(s)`, Units_Min, Units_Max, `Cross Listing`)
 
 UCLA_short = UCLA_clean %>% 
-  mutate(Campus = "UCLA") %>% 
+  mutate(Campus = "UCLA",
+         unt_min = as.character(unt_min),
+         unt_max = as.character(unt_max)) %>% 
   select(Campus,
          subj_area_nm, subj_area_cd, course_number, course_title, crs_desc, 
          requisites, same_as, unt_min, unt_max)
 names(UCLA_short) = names(UCD_short)
 
 UCI_short = UCI_clean %>% 
-  mutate(Campus = "UCI") %>% 
+  mutate(Campus = "UCI",
+         units_min = as.character(units_min),
+         units_max = as.character(units_max)) %>% 
   select(Campus,
          subject_name, subject_code, course_code, title, description, 
          prerequisites, units_min, units_max)
 names(UCI_short) = names(UCD_short[-ncol(UCD_short)])
 
-combined = bind_rows(UCD_short, UCLA_short, UCI_short)
+UCSC_short = UCSC_clean %>% 
+  mutate(Units_Min = as.character(Units_Min),
+         Units_Max = as.character(Units_Max)) %>%
+  select(Campus, Subject_Name, Subject, `Course Name`, Course_Title, Description,
+         Prerequisites, Units_Min, Units_Max, Cross_Listing)
+names(UCSC_short) = names(UCD_short)
+
+combined = bind_rows(UCD_short, UCLA_short, UCI_short, UCSC_short)
+combined = combined %>%
+  mutate(across(everything(), ~na_if(., "")),
+         Units_Min = as.numeric(Units_Min),
+         Units_Max = as.numeric(Units_Max))
+
 write.csv(combined, "./Cleaned/combined_CLEAN.csv", row.names = FALSE, 
           fileEncoding = "UTF-8", na = "")
