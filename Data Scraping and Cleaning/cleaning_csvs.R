@@ -182,7 +182,7 @@ UCLA_short = UCLA_clean %>%
          unt_max = as.character(unt_max)) %>% 
   select(Campus,
          subj_area_nm, subj_area_cd, course_number, course_title, crs_desc, 
-         requisites, same_as, unt_min, unt_max)
+         requisites, unt_min, unt_max, same_as)
 names(UCLA_short) = names(UCD_short)
 
 UCI_short = UCI_clean %>% 
