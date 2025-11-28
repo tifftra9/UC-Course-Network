@@ -20,8 +20,8 @@ UCD_clean = UCD %>%
   relocate(Subject, Subject_Code, Course_Code, Title, Units_Min, Units_Max) %>% 
   select(-subject, -Units, -Code)
 
-write.csv(UCD_clean, "./Cleaned/ucd_course_catalog_CLEAN.csv", row.names = FALSE, 
-          fileEncoding = "UTF-8", na = "")
+#write.csv(UCD_clean, "./Cleaned/ucd_course_catalog_CLEAN.csv", row.names = FALSE, 
+       #   fileEncoding = "UTF-8", na = "")
 
 ## UCLA ----
 UCLA = read.csv("./Uncleaned/UCLA.csv")
@@ -101,8 +101,8 @@ UCLA_clean = UCLA %>%
   relocate(subj_area_nm, subj_area_cd, course_number) %>% 
   select(-unt_rng)
 
-write.csv(UCLA_clean, "./Cleaned/ucla_CLEAN.csv", row.names = FALSE, 
-          fileEncoding = "UTF-8", na = "")
+#write.csv(UCLA_clean, "./Cleaned/ucla_CLEAN.csv", row.names = FALSE, 
+         # fileEncoding = "UTF-8", na = "")
 
 ## UC Irvine ----
 UCI = read.csv("./Uncleaned/uci_courses_catalog.csv", check.names = FALSE)
@@ -120,8 +120,8 @@ UCI_clean = UCI %>%
   relocate(subject_name, subject_code, course_code, title, units_min, units_max) %>% 
   select(-code, -course_name, -units)
 
-write.csv(UCI_clean, "./Cleaned/uci_courses_catalog_CLEAN.csv", row.names = FALSE, 
-          fileEncoding = "UTF-8", na = "")
+#write.csv(UCI_clean, "./Cleaned/uci_courses_catalog_CLEAN.csv", row.names = FALSE, 
+        #  fileEncoding = "UTF-8", na = "")
 
 ## UC Santa Cruz ----
 UCSC = read.csv("./Uncleaned/ucsc_final_cleaned.csv", check.names = FALSE)
@@ -164,11 +164,12 @@ UCSC_clean = UCSC %>%
          Description = gsub("\\(?Also offered[^\\.]+\\. ?\\)?", "", Description)) %>% 
   select(-prerequisties_des)
 
-write.csv(UCSC_clean, "./Cleaned/ucsc_courses_catalog_CLEAN.csv", row.names = FALSE, 
-          fileEncoding = "UTF-8", na = "")
+#write.csv(UCSC_clean, "./Cleaned/ucsc_courses_catalog_CLEAN.csv", row.names = FALSE, 
+       #   fileEncoding = "UTF-8", na = "")
 
 ## final dataset ----
 UCD_short = UCD_clean %>% 
+  filter(grepl("^0|^1", Course_Code)) %>% 
   mutate(Campus = "UCD",
          Units_Min = as.character(Units_Min),
          Units_Max = as.character(Units_Max)) %>%
@@ -177,6 +178,7 @@ UCD_short = UCD_clean %>%
          `Prerequisite(s)`, Units_Min, Units_Max, `Cross Listing`)
 
 UCLA_short = UCLA_clean %>% 
+  filter(crs_career_lvl_nm != "Graduate Courses") %>% 
   mutate(Campus = "UCLA",
          unt_min = as.character(unt_min),
          unt_max = as.character(unt_max)) %>% 
@@ -186,6 +188,7 @@ UCLA_short = UCLA_clean %>%
 names(UCLA_short) = names(UCD_short)
 
 UCI_short = UCI_clean %>% 
+  filter(!grepl("([A-Z]+)?2[0-9]{2}([A-Z]+)?", course_code)) %>% 
   mutate(Campus = "UCI",
          units_min = as.character(units_min),
          units_max = as.character(units_max)) %>% 
@@ -195,6 +198,7 @@ UCI_short = UCI_clean %>%
 names(UCI_short) = names(UCD_short[-ncol(UCD_short)])
 
 UCSC_short = UCSC_clean %>% 
+  filter(!grepl("([A-Z]+)?2[0-9]{2}([A-Z]+)?", `Course Name`)) %>% 
   mutate(Units_Min = as.character(Units_Min),
          Units_Max = as.character(Units_Max)) %>%
   select(Campus, Subject_Name, Subject, `Course Name`, Course_Title, Description,
@@ -205,7 +209,13 @@ combined = bind_rows(UCD_short, UCLA_short, UCI_short, UCSC_short)
 combined = combined %>%
   mutate(across(everything(), ~na_if(., "")),
          Units_Min = as.numeric(Units_Min),
-         Units_Max = as.numeric(Units_Max))
+         Units_Max = as.numeric(Units_Max)) %>% 
+  distinct()
 
 write.csv(combined, "./Cleaned/combined_CLEAN.csv", row.names = FALSE, 
           fileEncoding = "UTF-8", na = "")
+
+## only include classes w/ min units
+combined_filtered = combined %>% 
+  filter(Units_Min <= 2)
+  
