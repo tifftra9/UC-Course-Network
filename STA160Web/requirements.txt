@@ -1,0 +1,8 @@
+flask
+flask-cors
+pandas
+networkx
+plotly
+gunicorn
+sentence-transformers
+torch
