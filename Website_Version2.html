@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UC Course Matcher — Clean UI</title>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
+  <style>
+    :root{
+      --bg: #f4f6fb;
+      --bg-soft: #eef2ff;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-600: #1e4fcc;
+      --border-subtle: #e5e7eb;
+      --radius: 12px;
+      --shadow-sm: 0 4px 12px rgba(15,23,42,0.06);
+      --shadow-lg: 0 12px 32px rgba(15,23,42,0.10);
+      --max-width: 1200px;
+    }
+
+    * { box-sizing:border-box; }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(191,219,254,0.45), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(219,234,254,0.60), transparent 55%),
+        var(--bg);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      font-size:15px;
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 40px auto 32px;
+      padding: 0 24px;
+    }
+
+    /* Small utilities */
+    .mt-18 { margin-top:18px; }
+    .mt-14 { margin-top:14px; }
+    .text-center { text-align:center; }
+    .sr-only{
+      position:absolute;
+      width:1px;
+      height:1px;
+      padding:0;
+      margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      border:0;
+    }
+
+    /* Header/search area */
+    .search-card {
+      background: linear-gradient(135deg,#ffffff, #f9fafb);
+      padding: 18px 20px;
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+      display:flex;
+      gap:20px;
+      align-items:center;
+      margin-bottom:22px;
+      border:1px solid rgba(148,163,184,0.18);
+      backdrop-filter: blur(14px);
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    .search-card:hover{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .brand {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width: 190px;
+    }
+    .brand .title {
+      font-weight:700;
+      font-size:1.15rem;
+      letter-spacing:0.02em;
+    }
+    .brand .subtitle {
+      font-size:0.86rem;
+      color:var(--muted);
+    }
+
+    .search-controls {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex:1;
+    }
+
+    .field {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .field-label {
+      font-size:0.72rem;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+      color:var(--muted);
+      font-weight:500;
+    }
+
+    .input, .select {
+      padding:9px 12px;
+      border-radius:10px;
+      border:1px solid #e2e8f0;
+      font-size:0.96rem;
+      background:#ffffff;
+      outline: none;
+      transition:border-color .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+    .input:focus, .select:focus{
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37,99,235,0.1);
+      background:#ffffff;
+    }
+
+    .input{
+      flex:1;
+    }
+
+    .btn {
+      border-radius: 999px;
+      font-weight:600;
+      cursor:pointer;
+      transition: background .12s ease, transform .08s ease, box-shadow .12s ease;
+      font-size:0.92rem;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:9px 16px;
+      border:1px solid transparent;
+    }
+    .btn-primary{
+      background: var(--accent);
+      color:#ffffff;
+      box-shadow:0 6px 16px rgba(37,99,235,0.35);
+    }
+    .btn-primary:hover{
+      background: var(--accent-600);
+      transform: translateY(-1px);
+      box-shadow:0 10px 24px rgba(37,99,235,0.45);
+    }
+    .btn-secondary{
+      background:#ffffff;
+      color:#374151;
+      border-color:#d1d5db;
+    }
+    .btn-secondary:hover{
+      background:#f3f4f6;
+      transform: translateY(-1px);
+    }
+
+    /* Layout: two-column responsive */
+    .page-grid {
+      display:grid;
+      grid-template-columns: minmax(0,1.2fr) minmax(360px,0.9fr);
+      gap: 24px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .page-grid {
+        grid-template-columns: 1fr;
+      }
+      .search-card{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+      .brand{
+        min-width:auto;
+      }
+      .search-controls{
+        width:100%;
+        flex-wrap:wrap;
+      }
+    }
+
+    /* Generic card */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      box-shadow: var(--shadow-sm);
+      border:1px solid rgba(148,163,184,0.14);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+      border-color: rgba(129,140,248,0.4);
+    }
+
+    .card-header {
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+
+    .card-title {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:0;
+      font-weight:600;
+      color:#0f172a;
+      font-size:1.08rem;
+    }
+    .card-sub {
+      color:var(--muted);
+      font-size:0.85rem;
+      margin-top:4px;
+    }
+
+    /* Table */
+    .sim-table {
+      width:100%;
+      border-collapse: collapse;
+      font-size:0.94rem;
+    }
+    .sim-table th, .sim-table td {
+      padding:9px 10px;
+      text-align:left;
+      vertical-align:top;
+      border-bottom:1px solid #f3f4f6;
+    }
+    .sim-table th {
+      background:#f9fafb;
+      color:#4b5563;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+      font-size:0.75rem;
+    }
+    .sim-table tr:nth-child(even) { background:#fbfdff; }
+    .sim-course {
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+    }
+    .sim-course strong {
+      display:block;
+      font-size:0.97rem;
+    }
+    .sim-course .muted {
+      color:var(--muted);
+      font-size:0.86rem;
+      margin-top:3px;
+      display:block;
+    }
+    .score-badge {
+      margin-left:auto;
+      background:#dbeafe;
+      color:#1d4ed8;
+      font-size:0.78rem;
+      padding:4px 8px;
+      border-radius:999px;
+      font-weight:600;
+      white-space:nowrap;
+    }
+    .dash {
+      color:#d1d5db;
+    }
+
+    /* Prereq block */
+    .prereq-block {
+      background:#f9fafb;
+      border-left:4px solid var(--accent);
+      padding:12px;
+      border-radius:10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+      color:#0b1220;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:0.93rem;
+    }
+
+    /* Graph area */
+    .graph-wrap {
+      height: calc(100vh - 240px);
+      min-height: 420px;
+      max-height: 640px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    #chart-div {
+      flex:1 1 auto;
+      width:100%;
+      min-height:320px;
+      border-radius:14px;
+      overflow:hidden;
+      background:#f8fbff;
+      padding:8px;
+      display:block;
+      box-sizing:border-box;
+    }
+
+    /* small helper */
+    .muted-note { color:var(--muted); font-size:0.86rem; }
+    .loading {
+      display:none;
+      padding:10px 14px;
+      border-radius:12px;
+      background: #ffffff;
+      box-shadow: var(--shadow-sm);
+      text-align:center;
+      font-weight:500;
+      color:var(--muted);
+      margin:12px 0 18px;
+    }
+
+    /* footer */
+    .small {
+      font-size:0.83rem;
+      color:var(--muted);
+    }
+
+    /* Accessibility focus */
+    .input:focus, .select:focus, .btn:focus {
+      outline: 3px solid rgba(37,99,235,0.15);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page" role="main" aria-labelledby="page-title">
+    <header class="search-card" role="region" aria-label="search">
+      <div class="brand" aria-hidden="true">
+        <span class="title" id="page-title">UC Course Matcher</span>
+        <span class="subtitle">Find similar courses & prerequisite trees across UC campuses</span>
+      </div>
+
+      <div class="search-controls" role="search" aria-label="Course search controls">
+        <div class="field">
+          <span class="field-label">Campus</span>
+          <select id="campus-select" class="select" aria-label="Select campus">
+            <option value="UCD" selected>UCD (Davis)</option>
+            <option value="UCLA">UCLA (Los Angeles)</option>
+            <option value="UCSC">UCSC (Santa Cruz)</option>
+            <option value="UCI">UCI (Irvine)</option>
+          </select>
+        </div>
+
+        <div class="field" style="flex:1;">
+          <span class="field-label">Course ID</span>
+          <input id="course-input" class="input" type="text"
+                 placeholder="e.g. MAT022A"
+                 value="MAT022A"
+                 aria-label="Course ID">
+        </div>
+
+        <button id="search-btn" class="btn btn-primary" aria-label="Search courses">
+          <span>Search</span>
+        </button>
+
+        <button id="reset-btn" class="btn btn-secondary" title="Reset" aria-label="Reset search">
+          <span>Reset</span>
+        </button>
+      </div>
+
+      <div style="min-width:160px; text-align:right;">
+        <div class="small muted-note">Tip: click a node in the graph to load that course</div>
+      </div>
+    </header>
+
+    <div id="loading" class="loading" role="status" aria-live="polite">
+      Searching and calculating similarity…
+    </div>
+
+    <section class="page-grid" aria-live="polite">
+      <!-- Left Column -->
+      <div>
+        <section class="card" aria-labelledby="sim-title">
+          <div class="card-header">
+            <div>
+              <h2 id="sim-title" class="card-title">📚 Similar Courses</h2>
+              <p class="card-sub">Closest matches across other campuses</p>
+            </div>
+          </div>
+
+          <div style="overflow:auto;">
+            <table class="sim-table" aria-describedby="sim-title" role="table">
+              <thead>
+                <tr>
+                  <th>UCD</th>
+                  <th>UCLA</th>
+                  <th>UCSC</th>
+                  <th>UCI</th>
+                </tr>
+              </thead>
+              <tbody id="sim-table-body">
+                <!-- filled by JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card mt-18" aria-labelledby="pr-title">
+          <div class="card-header">
+            <div>
+              <h2 id="pr-title" class="card-title">🔗 Prerequisite List</h2>
+            </div>
+          </div>
+          <div id="prereq-text" class="prereq-block">—</div>
+        </section>
+      </div>
+
+      <!-- Right Column -->
+      <div>
+        <section class="card graph-wrap" aria-labelledby="graph-title">
+          <div class="card-header">
+            <div>
+              <h2 id="graph-title" class="card-title">📊 Prerequisite Graph</h2>
+              <p class="card-sub">Click nodes to navigate courses. Highlighted node = current course.</p>
+            </div>
+            <div class="text-right">
+              <div class="small muted-note">Graph generated from prerequisites</div>
+            </div>
+          </div>
+
+          <div id="chart-div" role="region" aria-label="Prerequisite graph"></div>
+        </section>
+
+      </div>
+    </section>
+
+    <footer class="mt-18 text-center">
+    </footer>
+  </main>
+
+  <script>
+    const API_BASE_URL = "https://wecli-course-api.hf.space/api/search";
+
+    const elCampus = document.getElementById('campus-select');
+    const elCourse = document.getElementById('course-input');
+    const btnSearch = document.getElementById('search-btn');
+    const btnReset  = document.getElementById('reset-btn');
+    const elLoading = document.getElementById('loading');
+    const elResults = document.querySelector('.page-grid');
+    const elSimBody = document.getElementById('sim-table-body');
+    const elPrereq = document.getElementById('prereq-text');
+    const chartDiv = document.getElementById('chart-div');
+
+    function setLoading(on, msg="Searching and calculating similarity…"){
+      elLoading.style.display = on ? 'block' : 'none';
+      elLoading.innerText = msg;
+      if(on) window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    elCourse.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') { btnSearch.click(); }
+    });
+
+    btnReset.addEventListener('click', () => {
+      elCourse.value = '';
+      elSimBody.innerHTML = '';
+      elPrereq.innerText = '—';
+      chartDiv.innerHTML = '';
+      elResults.style.opacity = 0.97;
+    });
+
+    btnSearch.addEventListener('click', () => performSearch());
+
+    async function performSearch(overrideCourseId = null) {
+      const campus = elCampus.value;
+      const courseId = (overrideCourseId || elCourse.value || '').trim();
+      if(!courseId) {
+        alert('Please enter a course id (e.g. MAT022A)');
+        return;
+      }
+
+      setLoading(true);
+      elResults.style.display = 'grid';
+
+      try {
+        const url = `${API_BASE_URL}?campus=${encodeURIComponent(campus)}&course_id=${encodeURIComponent(courseId)}`;
+        const resp = await fetch(url);
+        if(!resp.ok){
+          const body = await resp.json().catch(()=>({error:'Not found'}));
+          setLoading(false);
+          alert(body.error || 'Course not found or server error');
+          return;
+        }
+        const data = await resp.json();
+
+        document.getElementById('sim-title').innerText =
+          `📚 Similar Courses — ${campus} ${courseId}`;
+
+        elPrereq.innerText = data.prereq_list || 'None';
+
+        renderSimilarityTable(data.similarity || {}, campus);
+
+        if(data.graph && data.graph.data){
+          Plotly.react(chartDiv, data.graph.data, data.graph.layout, {responsive:true});
+
+          chartDiv.on('plotly_click', function(eventData){
+            try{
+              if(eventData && eventData.points && eventData.points.length){
+                const clickedId = eventData.points[0].customdata || eventData.points[0].text || null;
+                if(clickedId && typeof clickedId === 'string'){
+                  elCourse.value = clickedId;
+                  performSearch(clickedId);
+                }
+              }
+            }catch(e){ console.warn(e); }
+          });
+
+        } else {
+          chartDiv.innerHTML =
+            '<div style="padding:18px;color:#6b7280">No graph data available for this course.</div>';
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert('Search failed — check console for details.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderSimilarityTable(simData, currentCampus){
+      elSimBody.innerHTML = '';
+      const campuses = ['UCD','UCLA','UCSC','UCI'];
+      const maxRows = 5;
+
+      for(let rowIdx=0; rowIdx<maxRows; rowIdx++){
+        const tr = document.createElement('tr');
+
+        campuses.forEach(c => {
+          const td = document.createElement('td');
+
+          if(c === currentCampus || !simData[c] || !simData[c][rowIdx]){
+            td.innerHTML = `<span class="dash">—</span>`;
+          } else {
+            const item = simData[c][rowIdx];
+            const scorePct =
+              (typeof item.score === 'number')
+                ? `${(item.score*100).toFixed(1)}%`
+                : (item.score || '');
+            td.innerHTML = `
+              <div class="sim-course" title="${escapeHtml(item.title||'')}">
+                <div>
+                  <strong>${escapeHtml(item.code||'')}</strong>
+                  <div class="muted">${escapeHtml(item.title||'')}</div>
+                </div>
+                <div class="score-badge" aria-hidden="true">${scorePct}</div>
+              </div>
+            `;
+          }
+          tr.appendChild(td);
+        });
+
+        elSimBody.appendChild(tr);
+      }
+    }
+
+    function escapeHtml(s){
+      if(!s) return '';
+      return s.replace(/[&<>"'`=\/]/g, function(ch){
+        return {
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',
+          "'":'&#39;','/':'&#x2F;','=':'&#61;'
+        }[ch];
+      });
+    }
+
+    window.addEventListener('load', ()=> {
+      setTimeout(()=> performSearch(), 150);
+    });
+  </script>
+</body>
+</html>
+
