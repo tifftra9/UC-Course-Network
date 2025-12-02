@@ -6,6 +6,7 @@ library(RSelenium)
 library(stringr)
 library(dplyr)
 library(tidyr)
+library(igraph)
 
 ## UC Davis ----
 UCD = read.csv("./Uncleaned/ucd_course_catalog.csv", check.names = FALSE)
@@ -55,7 +56,7 @@ preparation_regex = paste(unlist(preparation), collapse = "|")
 UCLA_clean = UCLA %>% 
   mutate(course_number = gsub(". (?<=. ).*", "", course_title, perl = TRUE),
          course_title = gsub("^[^.]+. ", "", course_title),
-         subj_area_nm = gsub(" \\([A-Z ]+\\) $", "", subj_area_nm),
+         subj_area_nm = gsub(" \\([-A-Z& ]+\\) $", "", subj_area_nm),
          unt_min = gsub(" to [0-9\\.]+| or [0-9\\.]+", "", unt_rng),
          unt_max = gsub("[0-9\\.]+ to |[0-9\\.]+ or ", "", unt_rng),
          
@@ -108,7 +109,7 @@ UCLA_clean = UCLA %>%
   select(-unt_rng)
 
 #write.csv(UCLA_clean, "./Cleaned/ucla_CLEAN.csv", row.names = FALSE, 
-         # fileEncoding = "UTF-8", na = "")
+#          fileEncoding = "UTF-8", na = "")
 
 ## UC Irvine ----
 UCI = read.csv("./Uncleaned/uci_courses_catalog.csv", check.names = FALSE)
@@ -169,10 +170,13 @@ UCSC_clean = UCSC %>%
          Cross_Listing = str_extract(Description, "\\(?Also offered[^\\.]+\\. ?\\)?"),
          Cross_Listing = gsub("\\(?Also offered as |\\.|\\)", "", Cross_Listing),
          Description = gsub("\\(?Also offered[^\\.]+\\. ?\\)?", "", Description)) %>% 
-  select(-prerequisties_des)
+  select(-prerequisties_des) %>%
+  group_by(Subject, `Course Name`) %>%
+  slice(1) %>%
+  ungroup()
 
 #write.csv(UCSC_clean, "./Cleaned/ucsc_courses_catalog_CLEAN.csv", row.names = FALSE, 
-       #   fileEncoding = "UTF-8", na = "")
+#          fileEncoding = "UTF-8", na = "")
 
 ## final dataset ----
 UCD_short = UCD_clean %>% 
@@ -214,20 +218,22 @@ names(UCSC_short) = names(UCD_short)
 
 # --
 
-UCLA_mapping = combined %>% 
-  filter(Campus == "UCLA") %>% 
+UCLA_mapping = UCLA_short %>% 
   select(Subject, Subject_Code) %>% 
   mutate(Subject = str_squish(Subject),
          Subject_Code = str_squish(Subject_Code)) %>% 
   distinct() 
-typo_mapping = data.frame(Subject = c("Health Policy", "Archeology"),
-                          Subject_Code = c("HLT POL", "ARCHEOL"))
+typo_mapping = data.frame(
+  Subject = c("Health Policy", "Archeology", "Religion", "Study of Religion", 
+              "Chemistry", "Central and Eastern European Studies", "Civil Engineering",
+              "Microbiology", "Repeat Credit May be repeated:"),
+  Subject_Code = c("HLT POL", "ARCHEOL", "RELIGN", "RELIGN", 
+                   "CHEM", "C&EE ST", "C&EE", "MIMG", ""))
 UCLA_mapping = rbind(UCLA_mapping, typo_mapping) %>% 
   arrange(desc(str_length(Subject)))
 UCLA_mapping = setNames(UCLA_mapping$Subject_Code, UCLA_mapping$Subject)
 
-# FIX TOMMORROW CRIESSSS
-clean_crosslistings = function(listings){
+clean_crosslistings = function(listings, campus){
   if(is.na(listings) | str_trim(listings) == ""){
     return (NA)
   }
@@ -246,24 +252,103 @@ clean_crosslistings = function(listings){
   courses = unlist(str_split(listings, ",")) %>% 
     trimws()
   courses = courses[courses != ""]
+  courses = paste(campus, courses, sep = "___")
   
   paste(courses, collapse = "|")
 }
-
 
 combined = bind_rows(UCD_short, UCLA_short, UCI_short, UCSC_short)
 combined = combined %>%
   mutate(across(everything(), ~na_if(., "")),
          Units_Min = as.numeric(Units_Min),
          Units_Max = as.numeric(Units_Max),
-         `Cross Listing` = sapply(`Cross Listing`, clean_crosslistings)) %>% 
-  distinct()
-
-
-write.csv(combined_filtered, "./Cleaned/combined_CLEAN.csv", row.names = FALSE, 
-          fileEncoding = "UTF-8", na = "")
+         Subject = trimws(Subject),
+         Subject_Code = trimws(Subject_Code),
+         Course_Code = trimws(Course_Code),
+         `Course Description` = trimws(`Course Description`),
+         `Cross Listing` = mapply(clean_crosslistings, 
+                                  listings = `Cross Listing`, 
+                                  campus = Campus)) %>% 
+  distinct() 
 
 ## only include classes w/ min units
 combined_filtered = combined %>% 
   filter(Units_Min > 2)
-  
+
+#write.csv(combined, "./Cleaned/combined_CLEAN.csv", row.names = FALSE, 
+#          fileEncoding = "UTF-8", na = "")
+
+## create canonical dataframe
+course_edges = combined_filtered %>% 
+  mutate(Code = paste(Subject_Code, Course_Code, sep = " "),
+         Code = paste(Campus, Code, sep = "___")) %>% 
+  select(Code, `Cross Listing`) %>% 
+  separate_longer_delim(cols = `Cross Listing`, delim = "|") %>% 
+  mutate(`Cross Listing` = ifelse(is.na(`Cross Listing`), 
+                        paste0("MISSING_", row_number()), `Cross Listing`))
+
+graph = graph_from_data_frame(course_edges, directed = FALSE)
+comp = components(graph)
+clusters = data.frame(ID = names(comp$membership),
+                      Canonical_ID = comp$membership) %>% 
+  filter(!grepl("MISSING", ID)) 
+rownames(clusters) = NULL
+
+combined_filtered = combined_filtered %>%
+  mutate(Code = paste(Subject_Code, Course_Code, sep = " "),
+         Code = paste(Campus, Code, sep = "___")) %>%
+  left_join(clusters %>% select(ID, Canonical_ID),
+            by = c("Code" = "ID"))
+
+canonical_df = combined_filtered %>%
+  mutate(Code = gsub("[A-Z]+___", "", Code)) %>% 
+  group_by(Canonical_ID) %>%
+  summarise(Campus = first(Campus),
+            Subject = paste(unique(Subject), collapse = "|"),
+            Course_Codes = paste(unique(Code), collapse = "|"),
+            Title = first(Title),
+            "Course Description" = first(`Course Description`),
+            Units_Min = max(Units_Min, na.rm = TRUE),
+            Units_Max = max(Units_Max, na.rm = TRUE),
+            "Prerequisite(s)" = first(`Prerequisite(s)`)) %>%
+  ungroup()
+
+write.csv(canonical_df, "./Cleaned/canonical_CLEAN.csv", row.names = FALSE, 
+          fileEncoding = "UTF-8", na = "")
+write.csv(clusters, "./Cleaned/course_clusters.csv", row.names = FALSE, 
+          fileEncoding = "UTF-8", na = "")
+
+## evaluation set
+evaluation = read.csv("./Uncleaned/Evaluation_Set.csv", check.names = FALSE)
+
+evaluation_short = evaluation %>% 
+  mutate(`Course A Subject` = trimws(`Course A Subject`),
+         `Course B Subject` = trimws(`Course B Subject`),
+         `Course A Code` = paste(`Course A Subject`, `Course A Code`, sep = " "),
+         `Course A Code` = paste(`University A`, `Course A Code`, sep = "___"),
+         `Course B Code` = paste(`Course B Subject`, `Course B Code`, sep = " "),
+         `Course B Code` = paste(`University B`, `Course B Code`, sep = "___")) %>% 
+  select(`Match Label`, `Course A Code`, `Course B Code`) %>% 
+  left_join(clusters %>% select(ID, Canonical_ID),
+            by = c("Course A Code" = "ID")) %>% 
+  left_join(clusters %>% select(ID, Canonical_ID),
+            by = c("Course B Code" = "ID")) %>% 
+  left_join(canonical_df %>% select(Canonical_ID, Subject, Title, `Course Description`),
+            by = c("Canonical_ID.x" = "Canonical_ID")) %>% 
+  left_join(canonical_df %>% select(Canonical_ID, Subject, Title, `Course Description`),
+            by = c("Canonical_ID.y" = "Canonical_ID")) %>% 
+  rename("Course A Canonical" = Canonical_ID.x,
+         "Course B Canonical" = Canonical_ID.y,
+         "Course A Subject" = Subject.x,
+         "Course B Subject" = Subject.y,
+         "Course A Title" = Title.x,
+         "Course B Title" = Title.y,
+         "Course A Description" = "Course Description.x",
+         "Course B Description" = "Course Description.y") %>% 
+  relocate("Match Label", "Course A Canonical", "Course A Subject", "Course A Code",
+          "Course A Title", "Course A Description", "Course B Canonical", 
+          "Course B Subject", "Course B Code", "Course B Title", "Course B Description")
+
+
+write.csv(evaluation_short, "./Cleaned/evaluation.csv", row.names = FALSE, 
+          fileEncoding = "UTF-8", na = "")
