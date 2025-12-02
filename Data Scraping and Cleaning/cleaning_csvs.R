@@ -97,6 +97,12 @@ UCLA_clean = UCLA %>%
          not_open_credit = str_extract(crs_desc, "Not open[^\\.]+\\."),
          crs_desc = gsub("Not open[^\\.]+\\.", "", crs_desc),
          
+         enrollment = str_extract(crs_desc, "^Enrollment by[^\\.]+\\."),
+         crs_desc = gsub("^Enrollment by[^\\.]+\\.", "", crs_desc),
+         
+         offered_in = str_extract(crs_desc, "Offered in[^\\.]+\\."),
+         crs_desc = gsub("Offered in[^\\.]+\\.", "", crs_desc),
+         
          crs_desc = trimws(gsub("\\s+", " ", crs_desc))) %>% 
   relocate(subj_area_nm, subj_area_cd, course_number) %>% 
   select(-unt_rng)
@@ -116,7 +122,8 @@ UCI_clean = UCI %>%
          course_code = sub("^(.*) ([^ ]+)$", "\\2", code),
          course_code = gsub("\\.", "", course_code),
          prerequisites = gsub("Prerequisite: ", "", prerequisites),
-         repeatability = gsub("Repeatability: ", "", repeatability)) %>% 
+         repeatability = gsub("Repeatability: ", "", repeatability),
+         title = gsub("\\.$", "", title)) %>% 
   relocate(subject_name, subject_code, course_code, title, units_min, units_max) %>% 
   select(-code, -course_name, -units)
 
@@ -205,17 +212,58 @@ UCSC_short = UCSC_clean %>%
          Prerequisites, Units_Min, Units_Max, Cross_Listing)
 names(UCSC_short) = names(UCD_short)
 
+# --
+
+UCLA_mapping = combined %>% 
+  filter(Campus == "UCLA") %>% 
+  select(Subject, Subject_Code) %>% 
+  mutate(Subject = str_squish(Subject),
+         Subject_Code = str_squish(Subject_Code)) %>% 
+  distinct() 
+typo_mapping = data.frame(Subject = c("Health Policy", "Archeology"),
+                          Subject_Code = c("HLT POL", "ARCHEOL"))
+UCLA_mapping = rbind(UCLA_mapping, typo_mapping) %>% 
+  arrange(desc(str_length(Subject)))
+UCLA_mapping = setNames(UCLA_mapping$Subject_Code, UCLA_mapping$Subject)
+
+# FIX TOMMORROW CRIESSSS
+clean_crosslistings = function(listings){
+  if(is.na(listings) | str_trim(listings) == ""){
+    return (NA)
+  }
+  
+  for (subject in names(UCLA_mapping)) {
+    code = UCLA_mapping[[subject]]
+    pattern = paste0("\\b", subject, "\\b")
+    listings = str_replace_all(listings, regex(pattern, ignore_case = TRUE), code)
+  }
+  
+  listings = listings %>% 
+    str_replace_all(" and |;", ",") %>% 
+    str_replace_all("\\.", "") %>% 
+    str_squish()
+  
+  courses = unlist(str_split(listings, ",")) %>% 
+    trimws()
+  courses = courses[courses != ""]
+  
+  paste(courses, collapse = "|")
+}
+
+
 combined = bind_rows(UCD_short, UCLA_short, UCI_short, UCSC_short)
 combined = combined %>%
   mutate(across(everything(), ~na_if(., "")),
          Units_Min = as.numeric(Units_Min),
-         Units_Max = as.numeric(Units_Max)) %>% 
+         Units_Max = as.numeric(Units_Max),
+         `Cross Listing` = sapply(`Cross Listing`, clean_crosslistings)) %>% 
   distinct()
 
-write.csv(combined, "./Cleaned/combined_CLEAN.csv", row.names = FALSE, 
+
+write.csv(combined_filtered, "./Cleaned/combined_CLEAN.csv", row.names = FALSE, 
           fileEncoding = "UTF-8", na = "")
 
 ## only include classes w/ min units
 combined_filtered = combined %>% 
-  filter(Units_Min <= 2)
+  filter(Units_Min > 2)
   
