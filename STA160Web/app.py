@@ -50,10 +50,13 @@ if not df.empty:
 code_to_canonical = {} # (Campus, Code) -> Canonical ID
 canonical_to_row = {} # Canonical ID -> row information
 canonical_to_codes = {} # Canonical ID -> split cross-listed codes
+canonical_index_by_id = {} 
 
 if not canonical_df.empty:
     for idx, row in canonical_df.iterrows():
         canon_id = int(row["Canonical_ID"]) 
+
+        canonical_index_by_id[canon_id] = idx
         canonical_to_row[canon_id] = row.to_dict() # Canonical ID -> row information
 
         raw_codes = str(row["Course_Codes"]).split("|") # Canonical ID -> split cross-listed codes
@@ -229,9 +232,9 @@ def search():
         
         key = (campus, cid)
         canon_id = code_to_canonical.get(key)
-
-        if embeddings is not None and canon_id is not None:
-            canon_idx = canon_id - 1  
+        
+        if (embeddings is not None and canon_id in canonical_index_by_id):
+            canon_idx = canonical_index_by_id[canon_id]
             target_emb = embeddings[canon_idx].unsqueeze(0)
 
             resp["canonical"] = {
