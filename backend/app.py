@@ -36,7 +36,7 @@ except Exception as e:
     print(f"S3 download failed: {e}")
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 print("Initialize server...")
 
