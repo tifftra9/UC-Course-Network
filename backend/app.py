@@ -49,6 +49,13 @@ except Exception as e:
     print(f"Loading CSV fail: {e}")
     df = pd.DataFrame()
 
+try:
+    canonical_df = pd.read_csv("canonical_CLEAN.csv")  
+    canonical_df['Campus'] = canonical_df['Campus'].str.upper().str.strip()
+except Exception as e:
+    print("Error loading canonical_CLEAN.csv:", e)
+    canonical_df = pd.DataFrame()
+
 embeddings = None
 try:
     if os.path.exists('/app/course_embeddings.pt'):
@@ -63,6 +70,29 @@ try:
         print(" Not found embeddings file")
 except Exception as e:
     print(f"Loading Embeddings error: {e}")
+
+code_to_canonical = {}      # maps (Campus, Course ID) → Canonical_ID
+canonical_to_row = {}       # maps Canonical_ID → row dict
+canonical_to_codes = {}     # maps Canonical_ID → ["ABC 123", "XYZ 456"]
+canonical_index_by_id = {}  # maps Canonical_ID → embedding row index
+
+if not canonical_df.empty:
+
+    canonical_df = canonical_df.reset_index(drop=True)
+
+    for idx, row in canonical_df.iterrows():
+        cid = row["Canonical_ID"]
+
+        canonical_index_by_id[cid] = idx
+        canonical_to_row[cid] = row.to_dict()
+        raw_codes = str(row["Course_Codes"]).split("|")
+        cleaned_codes = [normalize_course_id(c) for c in raw_codes]
+
+        canonical_to_codes[cid] = cleaned_codes
+
+        campus = row["Campus"].upper().strip()
+        for code in cleaned_codes:
+            code_to_canonical[(campus, code)] = cid
 
 def normalize_course_id(text):
     if pd.isna(text): return ""
@@ -316,72 +346,66 @@ def search():
         if rows.empty:
             return jsonify({"error": f"Course {cid} not found in {campus}"}), 404
         
-        target_idx = rows.index[0]
         prereq_text = rows.iloc[0]['Prerequisite(s)']
         
         resp = {
             "prereq_list": prereq_text if pd.notna(prereq_text) else "None",
             "graph": None,
-            "similarity": {}
+            "similarity": {},
+            "canonical": None
         }
         
         current_graph = get_campus_graph(campus)
         if cid in current_graph:
             sub_G = get_semantic_subgraph(current_graph, cid, depth=depth)
             resp['graph'] = create_plotly_json(sub_G, f"Tree: {cid} (Depth {depth})", cid)
+        
+        key = (campus, cid)
+        canon_id = code_to_canonical.get(key)
+
+        if (embeddings is not None and canon_id in canonical_index_by_id):
+            canon_idx = canonical_index_by_id[canon_id]
+            target_emb = embeddings[canon_idx].unsqueeze(0)
+
+            resp["canonical"] = {
+                "canonical_id": canon_id,
+                "codes": canonical_to_codes[canon_id],
+                "title": canonical_to_row[canon_id]["Title"],
+                "description": canonical_to_row[canon_id]["Course Description"],
+            }
             
-        if embeddings is not None:
-            if isinstance(embeddings, torch.Tensor):
-                target_emb = embeddings[target_idx].unsqueeze(0)
-                sim_res = {}
-                for c in ['UCD', 'UCLA', 'UCSC', 'UCI']:
-                    if c == campus: 
-                        sim_res[c] = []
-                        continue
-                    mask = (df['Campus'] == c)
-                    if not mask.any(): 
-                        sim_res[c] = []
-                        continue
-                    
-                    c_embs = embeddings[mask.values] 
-                    c_idxs = df[mask].index
-                    hits = util.semantic_search(target_emb, c_embs, top_k=5)[0]
+            sim_res = {}
+
+            for c in ["UCD", "UCLA", "UCSC", "UCI"]:
+                if c == campus:
                     sim_res[c] = []
-                    for h in hits:
-                        row = df.loc[c_idxs[h['corpus_id']]]
-                        sim_res[c].append({
-                            "code": row['Course_ID'],
-                            "title": row['Title'],
-                            "score": round(h['score'], 3)
-                        })
-                resp['similarity'] = sim_res
-            
-            elif isinstance(embeddings, np.ndarray):
-                from sklearn.metrics.pairwise import cosine_similarity
-                target_emb = embeddings[target_idx].reshape(1, -1)
-                sim_res = {}
-                for c in ['UCD', 'UCLA', 'UCSC', 'UCI']:
-                    if c == campus: 
-                        sim_res[c] = []
-                        continue
-                    mask = (df['Campus'] == c)
-                    if not mask.any(): 
-                        sim_res[c] = []
-                        continue
-                    c_embs = embeddings[mask.values]
-                    c_idxs = df[mask].index
-                    scores = cosine_similarity(target_emb, c_embs)[0]
-                    top_indices = scores.argsort()[::-1][:5]
+                    continue
+
+                campus_mask = canonical_df["Campus"] == c
+                if not campus_mask.any():
                     sim_res[c] = []
-                    for idx in top_indices:
-                        score = scores[idx]
-                        row = df.loc[c_idxs[idx]]
-                        sim_res[c].append({
-                            "code": row['Course_ID'],
-                            "title": row['Title'],
-                            "score": round(float(score), 3)
-                        })
-                resp['similarity'] = sim_res
+                    continue
+
+                campus_embs = embeddings[campus_mask.values]
+                campus_canon_ids = canonical_df.loc[campus_mask, "Canonical_ID"].tolist()
+
+                hits = util.semantic_search(target_emb, campus_embs, top_k=5)[0]
+
+                campus_hits = []
+                for h in hits:
+                    hit_id = campus_canon_ids[h["corpus_id"]]
+                    hit_row = canonical_to_row[hit_id]
+
+                    campus_hits.append({
+                        "canonical_id": hit_id,
+                        "codes": canonical_to_codes[hit_id],
+                        "title": hit_row["Title"],
+                        "score": round(h["score"], 3)
+                    })
+
+                sim_res[c] = campus_hits
+
+            resp["similarity"] = sim_res
             
         return jsonify(resp)
 
