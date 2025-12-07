@@ -309,10 +309,13 @@ def create_plotly_json(G, title, highlight):
             color.append(c); size.append(s)
             
             node_title = G.nodes[n].get('title', '')
-            if node_title:
-                txt.append(f"<b>{hover_prefix}: {n}</b><br>{node_title}")
+            if str(n).startswith("OR_"):
+                txt.append("")   
             else:
-                txt.append(f"<b>{hover_prefix}: {n}</b>")
+                if node_title:
+                    txt.append(f"<b>{hover_prefix}: {n}</b><br>{node_title}")
+                else:
+                    txt.append(f"<b>{hover_prefix}: {n}</b>")
 
         fig = go.Figure(data=[
             go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(color='#ccc', width=0.8), hoverinfo='none'),
