@@ -1,3 +1,7 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+numpy<2
+boto3
 flask
 flask-cors
 pandas
@@ -5,4 +9,4 @@ networkx
 plotly
 gunicorn
 sentence-transformers
-torch
+torch==2.2.2+cpu ; sys_platform == "linux"
