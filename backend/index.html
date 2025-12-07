@@ -82,7 +82,7 @@
 
     <script>
 
-        const API_BASE_URL = "http://http://18.188.206.85:7860/api/search";
+        const API_BASE_URL = "http://18.188.206.85:7860/api/search";
 
         async function performSearch(overrideCourseId = null) {
             const campus = document.getElementById('campus-select').value;
@@ -152,7 +152,7 @@
                     } else {
                         const item = simData[campus][i];
                         td.innerHTML = `
-                            <strong>${item.code}</strong><br>
+                            <strong>${item.codes.join(", ")}</strong>
                             <span style="font-size:0.9em">${item.title}</span>
                             <div class="score-badge">${(item.score * 100).toFixed(1)}%</div>
                         `;

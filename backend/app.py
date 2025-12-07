@@ -71,6 +71,10 @@ try:
 except Exception as e:
     print(f"Loading Embeddings error: {e}")
 
+def normalize_course_id(text):
+    if pd.isna(text): return ""
+    return str(text).replace(" ", "").upper()
+
 code_to_canonical = {}      # maps (Campus, Course ID) → Canonical_ID
 canonical_to_row = {}       # maps Canonical_ID → row dict
 canonical_to_codes = {}     # maps Canonical_ID → ["ABC 123", "XYZ 456"]
@@ -93,10 +97,6 @@ if not canonical_df.empty:
         campus = row["Campus"].upper().strip()
         for code in cleaned_codes:
             code_to_canonical[(campus, code)] = cid
-
-def normalize_course_id(text):
-    if pd.isna(text): return ""
-    return str(text).replace(" ", "").upper()
 
 if not df.empty:
     df['Course_ID'] = (df['Subject_Code'].fillna('') + df['Course_Code'].fillna('').astype(str)).apply(normalize_course_id)
