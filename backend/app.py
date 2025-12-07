@@ -42,7 +42,7 @@ print("Initialize server...")
 
 try:
     cols_to_keep = ['Campus', 'Subject_Code', 'Course_Code', 'Title', 'Prerequisite(s)', 'Course Description']
-    df = pd.read_csv('combined_CLEAN.csv', usecols=lambda c: c in cols_to_keep)
+    df = pd.read_csv('/app/combined_CLEAN.csv', usecols=lambda c: c in cols_to_keep)
     df['Campus'] = df['Campus'].str.upper().str.strip()
     print(f"Loading CSV success {len(df)} lines total")
 except Exception as e:
@@ -50,7 +50,7 @@ except Exception as e:
     df = pd.DataFrame()
 
 try:
-    canonical_df = pd.read_csv("canonical_CLEAN.csv")  
+    canonical_df = pd.read_csv("/app/canonical_CLEAN.csv")
     canonical_df['Campus'] = canonical_df['Campus'].str.upper().str.strip()
 except Exception as e:
     print("Error loading canonical_CLEAN.csv:", e)
@@ -73,7 +73,9 @@ except Exception as e:
 
 def normalize_course_id(text):
     if pd.isna(text): return ""
-    return str(text).replace(" ", "").upper()
+    t = str(text).upper()
+    t = re.sub(r"[^A-Z0-9]", "", t)  # removes spaces, hyphens, slashes
+    return t
 
 code_to_canonical = {}      # maps (Campus, Course ID) → Canonical_ID
 canonical_to_row = {}       # maps Canonical_ID → row dict
