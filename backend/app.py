@@ -18,7 +18,7 @@ import boto3
 def download_embeddings_from_s3():
     bucket = "uc-course-embeddings"  
     key = "course_embeddings.pt"
-    local_path = "../model_training/course_embeddings.pt"
+    local_path = "/app/course_embeddings.pt"
 
     if not os.path.exists(local_path):
         print("Downloading embeddings from S3...")
@@ -30,7 +30,10 @@ def download_embeddings_from_s3():
         s3.download_file(bucket, key, local_path)
         print("Download complete.")
 
-download_embeddings_from_s3()
+try:
+    download_embeddings_from_s3()
+except Exception as e:
+    print(f"S3 download failed: {e}")
 
 app = Flask(__name__)
 CORS(app)
@@ -48,9 +51,9 @@ except Exception as e:
 
 embeddings = None
 try:
-    if os.path.exists('course_embeddings.pt'):
+    if os.path.exists('/app/course_embeddings.pt'):
         print("Loading Tensor Embeddings...")
-        embeddings = torch.load('course_embeddings.pt', map_location=torch.device('cpu'))
+        embeddings = torch.load('/app/course_embeddings.pt', map_location=torch.device('cpu'))
         print(f"Loading Embeddings success! Shape: {embeddings.shape}")
     elif os.path.exists('course_embeddings.npy'):
         print("Loading NumPy Embeddings...")
