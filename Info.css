@@ -118,3 +118,47 @@ body {
     opacity: 0.85;
     margin-bottom: 16px;
 }
+
+.card-grid {
+  width: 90%;
+  max-width: 1200px;
+  margin: 40px auto 100px auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 28px;
+}
+
+.info-card {
+  background: white;
+  padding: 32px 30px;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.12);
+}
+
+.card-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 16px;
+  color: var(--navy);
+}
+
+.card-sub {
+  margin-top: 18px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--blue-glow);
+}
+
+.card-text {
+  font-size: 16px;
+  line-height: 1.75;
+  opacity: 0.9;
+  margin-bottom: 10px;
+}

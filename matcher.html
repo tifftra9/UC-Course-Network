@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UC Course Matcher — Interactive</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .page {
+      padding-top: 0px !important;
+    }
+
+    .search-card {
+      margin-top: 0 !important;
+    }
+
+    .navbar {
+      padding-bottom: 0px !important;
+    }
+</style>
+</head>
+<body>
+  <nav class="navbar">
+  <div class="nav-center">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="info.html" class="nav-link">Information</a>
+    <a href="matcher.html" class="nav-link active">Course Matcher</a>
+  </div>
+  </nav>
+  <main class="page">
+    <header class="search-card">
+      <div class="brand">
+        <span class="title">UC Course Matcher</span>
+        <span class="subtitle">Find similar courses & prerequisite trees</span>
+      </div>
+
+      <div class="search-controls">
+        <div class="field">
+          <span class="field-label">Campus</span>
+          <select id="campus-select" class="select">
+            <option value="UCD" selected>UCD (Davis)</option>
+            <option value="UCLA">UCLA (Los Angeles)</option>
+            <option value="UCSC">UCSC (Santa Cruz)</option>
+            <option value="UCI">UCI (Irvine)</option>
+          </select>
+        </div>
+
+        <div class="field" style="flex:1;">
+          <span class="field-label">Course ID</span>
+          <input id="course-input" class="input" type="text" placeholder="e.g. MAT022A" value="MAT022A">
+        </div>
+
+        <div class="field">
+          <span class="field-label">Graph Depth</span>
+          <div class="range-wrap" title="Adjust prerequisite generation depth">
+            <input type="range" id="depth-slider" min="1" max="5" value="1" oninput="document.getElementById('depth-val').innerText = this.value">
+            <span id="depth-val" class="range-val">1</span>
+          </div>
+        </div>
+
+        <button id="search-btn" class="btn btn-primary">
+          <span>Search</span>
+        </button>
+
+        <button id="reset-btn" class="btn btn-secondary">
+          <span>Reset</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="loading" class="loading">Searching and calculating similarity…</div>
+
+    <section class="page-grid" style="display:none;">
+      <div>
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h2 id="sim-title" class="card-title">📚 Similar Courses</h2>
+              <p class="card-sub">Closest matches across other campuses</p>
+            </div>
+          </div>
+          <div style="overflow:auto;">
+            <table class="sim-table">
+              <thead>
+                <tr><th>UCD</th><th>UCLA</th><th>UCSC</th><th>UCI</th></tr>
+              </thead>
+              <tbody id="sim-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card mt-18">
+          <div class="card-header">
+            <h2 class="card-title">🔗 Prerequisite List</h2>
+          </div>
+          <div id="prereq-text" style="background:#f9fafb; border-left:4px solid var(--accent); padding:12px; border-radius:10px; font-family:monospace; white-space:pre-wrap;">—</div>
+        </section>
+      </div>
+
+      <div>
+        <section class="card graph-wrap">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">📊 Prerequisite Graph</h2>
+              <p class="card-sub">Click nodes to navigate.</p>
+            </div>
+            <div class="text-right">
+              <div class="small muted-note">Showing <span id="depth-display">1</span> generation(s)</div>
+            </div>
+          </div>
+          <div id="chart-div"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE_URL = "https://sta160-uc-course-match.duckdns.org/api/search";
+
+    const elCampus = document.getElementById('campus-select');
+    const elCourse = document.getElementById('course-input');
+    const elDepth = document.getElementById('depth-slider');
+    const elDepthVal = document.getElementById('depth-val');
+    const elDepthDisplay = document.getElementById('depth-display');
+    const btnSearch = document.getElementById('search-btn');
+    const btnReset  = document.getElementById('reset-btn');
+    const elLoading = document.getElementById('loading');
+    const elResults = document.querySelector('.page-grid');
+    const elSimBody = document.getElementById('sim-table-body');
+    const elPrereq = document.getElementById('prereq-text');
+    const chartDiv = document.getElementById('chart-div');
+
+    function setLoading(on){
+      elLoading.style.display = on ? 'block' : 'none';
+      if(on) window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    elCourse.addEventListener('keydown', (e) => { if(e.key === 'Enter') btnSearch.click(); });
+
+    elDepth.addEventListener('change', () => {
+        performSearch(); 
+    });
+
+    btnReset.addEventListener('click', () => {
+      elCourse.value = '';
+      elDepth.value = 1;
+      elDepthVal.innerText = '1';
+      elSimBody.innerHTML = '';
+      elPrereq.innerText = '—';
+      chartDiv.innerHTML = '';
+      elResults.style.display = 'none';
+    });
+
+    btnSearch.addEventListener('click', () => performSearch());
+
+    async function performSearch(overrideCourseId = null) {
+      const campus = elCampus.value;
+      const courseId = (overrideCourseId || elCourse.value || '').trim();
+      const depth = elDepth.value; // 获取当前深度
+
+      if(!courseId) {
+        alert('Please enter a course id (e.g. MAT022A)');
+        return;
+      }
+
+      setLoading(true);
+      elResults.style.display = 'grid';
+      elDepthDisplay.innerText = depth;
+
+      try {
+        const url = `${API_BASE_URL}?campus=${encodeURIComponent(campus)}&course_id=${encodeURIComponent(courseId)}&depth=${depth}`;
+        
+        const resp = await fetch(url);
+        if(!resp.ok){
+          const body = await resp.json().catch(()=>({error:'Not found'}));
+          setLoading(false);
+          alert(body.error || 'Course not found');
+          return;
+        }
+        const data = await resp.json();
+
+        document.getElementById('sim-title').innerText = `📚 Similar Courses — ${campus} ${courseId}`;
+        elPrereq.innerText = data.prereq_list || 'None';
+
+        renderSimilarityTable(data.similarity || {}, campus);
+
+        if(data.graph && data.graph.data){
+          Plotly.react(chartDiv, data.graph.data, data.graph.layout, {responsive:true});
+
+          chartDiv.removeAllListeners && chartDiv.removeAllListeners('plotly_click'); 
+          chartDiv.on('plotly_click', function(eventData){
+            try{
+              if(eventData && eventData.points && eventData.points.length){
+                const clickedId = eventData.points[0].customdata;
+                if(clickedId && typeof clickedId === 'string'){
+                  elCourse.value = clickedId;
+                  performSearch(clickedId);
+                }
+              }
+            }catch(e){ console.warn(e); }
+          });
+
+        } else {
+          chartDiv.innerHTML = '<div style="padding:18px;color:#6b7280">No graph data available.</div>';
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert('Search failed. Backend might be waking up.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderSimilarityTable(simData, currentCampus){
+      elSimBody.innerHTML = '';
+      const campuses = ['UCD','UCLA','UCSC','UCI'];
+      for(let i=0; i<5; i++){
+        const tr = document.createElement('tr');
+        campuses.forEach(c => {
+          const td = document.createElement('td');
+          if(c === currentCampus || !simData[c] || !simData[c][i]){
+            td.innerHTML = `<span style="color:#d1d5db">—</span>`;
+          } else {
+            const item = simData[c][i];
+            td.innerHTML = `
+              <div style="display:flex;gap:8px;">
+                <div>
+                  <strong>${item.code}</strong>
+                  <div style="color:#6b7280;font-size:0.86rem;margin-top:2px">${item.title}</div>
+                </div>
+                <div class="score-badge" style="margin-left:auto;">${(item.score*100).toFixed(1)}%</div>
+              </div>`;
+          }
+          tr.appendChild(td);
+        });
+        elSimBody.appendChild(tr);
+      }
+    }
+
+    window.addEventListener('load', ()=> {
+      setTimeout(()=> performSearch(), 100);
+    });
+  </script>
+</body>
+</html>
+
