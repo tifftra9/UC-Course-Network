@@ -6,33 +6,40 @@
   <title>UC Course Matcher — Interactive</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-
   <link rel="stylesheet" href="style.css" />
+
   <style>
-    .page {
-      padding-top: 0px !important;
-    }
+    .page { padding-top: 0px !important; }
+    .search-card { margin-top: 0 !important; }
+    .navbar { padding-bottom: 0px !important; }
 
-    .search-card {
-      margin-top: 0 !important;
+    /* ✅ Remove blue bubbles */
+    .score-badge {
+      background: none !important;
+      color: #0f172a !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      font-weight: 600;
     }
-
-    .navbar {
-      padding-bottom: 0px !important;
-    }
-</style>
+  </style>
 </head>
+
 <body>
+
+  <!-- NAVBAR -->
   <nav class="navbar">
-  <div class="nav-center">
-    <a href="index.html" class="nav-link">Home</a>
-    <a href="info.html" class="nav-link">Information</a>
-    <a href="matcher.html" class="nav-link active">Course Matcher</a>
-  </div>
+    <div class="nav-center">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="information.html" class="nav-link">Information</a>
+      <a href="matcher.html" class="nav-link active">Course Matcher</a>
+    </div>
   </nav>
+
   <main class="page">
+
+    <!-- SEARCH CARD -->
     <header class="search-card">
       <div class="brand">
         <span class="title">UC Course Matcher</span>
@@ -57,25 +64,23 @@
 
         <div class="field">
           <span class="field-label">Graph Depth</span>
-          <div class="range-wrap" title="Adjust prerequisite generation depth">
-            <input type="range" id="depth-slider" min="1" max="5" value="1" oninput="document.getElementById('depth-val').innerText = this.value">
+          <div class="range-wrap">
+            <input type="range" id="depth-slider" min="1" max="5" value="1"
+                   oninput="document.getElementById('depth-val').innerText = this.value">
             <span id="depth-val" class="range-val">1</span>
           </div>
         </div>
 
-        <button id="search-btn" class="btn btn-primary">
-          <span>Search</span>
-        </button>
-
-        <button id="reset-btn" class="btn btn-secondary">
-          <span>Reset</span>
-        </button>
+        <button id="search-btn" class="btn btn-primary"><span>Search</span></button>
       </div>
     </header>
 
     <div id="loading" class="loading">Searching and calculating similarity…</div>
 
+    <!-- ✅ GRID LAYOUT -->
     <section class="page-grid" style="display:none;">
+
+      <!-- ✅ LEFT COLUMN -->
       <div>
         <section class="card">
           <div class="card-header">
@@ -84,6 +89,7 @@
               <p class="card-sub">Closest matches across other campuses</p>
             </div>
           </div>
+
           <div style="overflow:auto;">
             <table class="sim-table">
               <thead>
@@ -93,16 +99,12 @@
             </table>
           </div>
         </section>
-
-        <section class="card mt-18">
-          <div class="card-header">
-            <h2 class="card-title">🔗 Prerequisite List</h2>
-          </div>
-          <div id="prereq-text" style="background:#f9fafb; border-left:4px solid var(--accent); padding:12px; border-radius:10px; font-family:monospace; white-space:pre-wrap;">—</div>
-        </section>
       </div>
 
+      <!-- ✅ RIGHT COLUMN -->
       <div>
+
+        <!-- GRAPH -->
         <section class="card graph-wrap">
           <div class="card-header">
             <div>
@@ -110,15 +112,33 @@
               <p class="card-sub">Click nodes to navigate.</p>
             </div>
             <div class="text-right">
-              <div class="small muted-note">Showing <span id="depth-display">1</span> generation(s)</div>
+              <div class="small muted-note">
+                Showing <span id="depth-display">1</span> generation(s)
+              </div>
             </div>
           </div>
           <div id="chart-div"></div>
         </section>
+
+        <!-- ✅ PREREQUISITE LIST MOVED UNDER GRAPH -->
+        <section class="card mt-18">
+          <div class="card-header">
+            <h2 class="card-title">🔗 Prerequisite List</h2>
+          </div>
+
+          <div id="prereq-text"
+               style="background:#f9fafb; border-left:4px solid var(--accent);
+                      padding:12px; border-radius:10px;
+                      font-family:monospace; white-space:pre-wrap;">
+            —
+          </div>
+        </section>
+
       </div>
     </section>
   </main>
 
+  <!-- ✅ SCRIPT -->
   <script>
     const API_BASE_URL = "https://sta160-uc-course-match.duckdns.org/api/search";
 
@@ -142,26 +162,14 @@
 
     elCourse.addEventListener('keydown', (e) => { if(e.key === 'Enter') btnSearch.click(); });
 
-    elDepth.addEventListener('change', () => {
-        performSearch(); 
-    });
-
-    btnReset.addEventListener('click', () => {
-      elCourse.value = '';
-      elDepth.value = 1;
-      elDepthVal.innerText = '1';
-      elSimBody.innerHTML = '';
-      elPrereq.innerText = '—';
-      chartDiv.innerHTML = '';
-      elResults.style.display = 'none';
-    });
+    elDepth.addEventListener('change', () => { performSearch(); });
 
     btnSearch.addEventListener('click', () => performSearch());
 
     async function performSearch(overrideCourseId = null) {
       const campus = elCampus.value;
       const courseId = (overrideCourseId || elCourse.value || '').trim();
-      const depth = elDepth.value; // 获取当前深度
+      const depth = elDepth.value;
 
       if(!courseId) {
         alert('Please enter a course id (e.g. MAT022A)');
@@ -174,7 +182,6 @@
 
       try {
         const url = `${API_BASE_URL}?campus=${encodeURIComponent(campus)}&course_id=${encodeURIComponent(courseId)}&depth=${depth}`;
-        
         const resp = await fetch(url);
         if(!resp.ok){
           const body = await resp.json().catch(()=>({error:'Not found'}));
@@ -182,29 +189,23 @@
           alert(body.error || 'Course not found');
           return;
         }
-        const data = await resp.json();
 
+        const data = await resp.json();
         document.getElementById('sim-title').innerText = `📚 Similar Courses — ${campus} ${courseId}`;
         elPrereq.innerText = data.prereq_list || 'None';
-
         renderSimilarityTable(data.similarity || {}, campus);
 
         if(data.graph && data.graph.data){
           Plotly.react(chartDiv, data.graph.data, data.graph.layout, {responsive:true});
-
-          chartDiv.removeAllListeners && chartDiv.removeAllListeners('plotly_click'); 
           chartDiv.on('plotly_click', function(eventData){
-            try{
-              if(eventData && eventData.points && eventData.points.length){
-                const clickedId = eventData.points[0].customdata;
-                if(clickedId && typeof clickedId === 'string'){
-                  elCourse.value = clickedId;
-                  performSearch(clickedId);
-                }
+            if(eventData?.points?.length){
+              const clickedId = eventData.points[0].customdata;
+              if(clickedId){
+                elCourse.value = clickedId;
+                performSearch(clickedId);
               }
-            }catch(e){ console.warn(e); }
+            }
           });
-
         } else {
           chartDiv.innerHTML = '<div style="padding:18px;color:#6b7280">No graph data available.</div>';
         }
@@ -247,6 +248,8 @@
       setTimeout(()=> performSearch(), 100);
     });
   </script>
+
 </body>
 </html>
+
 
