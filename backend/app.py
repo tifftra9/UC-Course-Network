@@ -303,6 +303,7 @@ def create_plotly_json(G, title, highlight):
 def home():
     return "API Running"
 
+@app.route('/api/search', methods=['GET'])
 def search():
     try:
         campus = request.args.get('campus', 'UCD').upper()
