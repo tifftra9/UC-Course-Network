@@ -1,5 +1,5 @@
 :root{
-    --bg: #f4f6fb;
+    --bg: #f8f5e3;
     --bg-soft: #eef2ff;
     --card: #ffffff;
     --muted: #6b7280;
@@ -261,3 +261,55 @@ input[type=range] {
     margin:12px 0 18px;
 }
 .muted-note { color:var(--muted); font-size:0.86rem; }
+
+.navbar {
+  display: flex;
+  justify-content: center;      
+  align-items: center;
+  padding: 24px 0;
+  background: var(--light-yellow);
+  font-family: "Poppins", sans-serif;
+  position: sticky;             
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.nav-center {
+  display: flex;
+  gap: 48px;
+  align-items: center;
+}
+
+.nav-link {
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--navy);
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition:
+    color 0.3s ease,
+    text-shadow 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--blue-glow);
+  text-shadow: 0 0 10px rgba(127, 219, 255, 0.7);
+}
+
+
+.nav-link.active {
+  color: var(--blue-glow);
+  font-weight: 700;
+  text-shadow:
+    0 0 10px rgba(127, 219, 255, 0.7),
+    0 0 18px rgba(127, 219, 255, 0.6),
+    0 0 28px rgba(127, 219, 255, 0.45);
+}
+
+.page {
+  margin-top: 50px;
+}
