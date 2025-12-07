@@ -77,28 +77,25 @@ def normalize_course_id(text):
     t = re.sub(r"[^A-Z0-9]", "", t)  # removes spaces, hyphens, slashes
     return t
 
-code_to_canonical = {}      # maps (Campus, Course ID) → Canonical_ID
-canonical_to_row = {}       # maps Canonical_ID → row dict
-canonical_to_codes = {}     # maps Canonical_ID → ["ABC 123", "XYZ 456"]
-canonical_index_by_id = {}  # maps Canonical_ID → embedding row index
+code_to_canonical = {}
+canonical_to_row = {}
+canonical_to_codes = {}
+canonical_index_by_id = {}
 
 if not canonical_df.empty:
-
     canonical_df = canonical_df.reset_index(drop=True)
-
     for idx, row in canonical_df.iterrows():
-        cid = row["Canonical_ID"]
-
-        canonical_index_by_id[cid] = idx
-        canonical_to_row[cid] = row.to_dict()
+        campus = str(row["Campus"]).upper().strip()
+        cid = int(row["Canonical_ID"])
         raw_codes = str(row["Course_Codes"]).split("|")
-        cleaned_codes = [normalize_course_id(c) for c in raw_codes]
-
+        cleaned_codes = [normalize_course_id(c) for c in raw_codes if normalize_course_id(c)]
         canonical_to_codes[cid] = cleaned_codes
-
-        campus = row["Campus"].upper().strip()
         for code in cleaned_codes:
             code_to_canonical[(campus, code)] = cid
+
+    for idx, row in canonical_df.iterrows():
+        cid = int(row["Canonical_ID"])
+        canonical_to_row[cid] = row.to_dict()
 
 if not df.empty:
     df['Course_ID'] = (df['Subject_Code'].fillna('') + df['Course_Code'].fillna('').astype(str)).apply(normalize_course_id)
@@ -367,18 +364,6 @@ def search():
         
         key = (campus, cid)
         canon_id = code_to_canonical.get(key)
-
-        print("==== DEBUG CANONICAL LOOKUP ====")
-        print("Campus:", campus)
-        print("CID:", cid)
-        print("Lookup Key:", key)
-        print("Canon ID:", canon_id)
-        print("Embeddings Loaded:", embeddings is not None)
-        print("Canonical Index Size:", len(canonical_index_by_id))
-        print("Canonical DF Size:", len(canonical_df))
-        print("Code to Canonical Size:", len(code_to_canonical))
-        print("================================")
-
 
         if (embeddings is not None and canon_id in canonical_index_by_id):
             canon_idx = canonical_index_by_id[canon_id]
