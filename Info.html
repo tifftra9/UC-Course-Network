@@ -5,29 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UC Course Matcher — Info</title>
     <link rel="stylesheet" href="info.css" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-    <!-- Top Navigation -->
     <nav class="top-nav">
         <a href="Introduction.html" class="nav-item">Home</a>
-        <a href="Info.html" class="nav-item active-nav">Info</a>
+        <a href="Info.html" class="nav-item">Info</a>
         <a href="index.html" class="nav-item">Course Matcher</a>
     </nav>
 
     <header class="info-hero">
-        <h1 class="info-title">Project Overview</h1>
+        <h1 class="info-title">Project Description</h1>
     </header>
+    
 
-    <!-- Main Content -->
     <div class="info-container">
-
-        <!-- SECTION: Problem -->
-        <section class="info-section">
+      
+        <div class="info-section">
             <h2 class="section-heading">Problem</h2>
             <p class="info-text">
                 Students across the UC system often struggle to compare courses between campuses or interpret complex,
@@ -41,10 +40,9 @@
                 varied preparation their students bring. UC Course Matcher directly addresses these challenges by making course relationships transparent,
                 comparable, and easy to navigate.
             </p>
-        </section>
+        </div>
 
-        <!-- SECTION: Methodology -->
-        <section class="info-section">
+        <div class="info-section">
             <h2 class="section-heading">Methodology</h2>
 
             <h3 class="subheading">Data Collection</h3>
@@ -74,10 +72,9 @@
                 Graphs were built using NetworkX, served through Flask, and visualized in the front end using Plotly. 
                 A hierarchical layout with barycenter ordering improved clarity and reduced visual clutter.
             </p>
-        </section>
+        </div>
 
-        <!-- SECTION: Results -->
-        <section class="info-section">
+        <div class="info-section">
             <h2 class="section-heading">Results & Findings</h2>
             <p class="info-text">
                 The bge-base-en-v1.5 embedding model achieved the highest Spearman correlation, AUC, and accuracy in identifying
@@ -90,10 +87,9 @@
                 STA 131A at UC Davis show how structural patterns, bottlenecks, and alternative pathways become more apparent 
                 through deeper graph layers.
             </p>
-        </section>
+        </div>
 
-        <!-- SECTION: Impact -->
-        <section class="info-section">
+        <div class="info-section">
             <h2 class="section-heading">Impact</h2>
             <p class="info-text">
                 UC Course Matcher provides a transparent, centralized way to explore UC course information. Transfer students can
@@ -102,9 +98,10 @@
                 Additionally, faculty gain more insight into the background preparation of incoming students. The framework can be 
                 expanded to include additional campuses, larger evaluation sets, and broader compatibility analysis across programs.
             </p>
-        </section>
+        </div>
 
     </div>
 
 </body>
 </html>
+
