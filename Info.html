@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UC Course Matcher — Info</title>
+    <link rel="stylesheet" href="info.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <a href="Introduction.html" class="nav-item">Home</a>
+        <a href="Info.html" class="nav-item active-nav">Info</a>
+        <a href="index.html" class="nav-item">Course Matcher</a>
+    </nav>
+
+    <header class="info-hero">
+        <h1 class="info-title">Project Overview</h1>
+    </header>
+
+    <!-- Main Content -->
+    <div class="info-container">
+
+        <!-- SECTION: Problem -->
+        <section class="info-section">
+            <h2 class="section-heading">Problem</h2>
+            <p class="info-text">
+                Students across the UC system often struggle to compare courses between campuses or interpret complex,
+                inconsistently formatted prerequisite chains within their own. Each UC campus maintains unique catalog
+                structures, numbering conventions, and prerequisite language, making it challenging to determine whether 
+                courses are equivalent, partially aligned, or unrelated.
+            </p>
+            <p class="info-text">
+                These problems especially affect UC–to–UC transfer students, who lack tools like Assist.org and must rely on
+                tedious manual searches or limited advisor availability. Faculty also face difficulties understanding the 
+                varied preparation their students bring. UC Course Matcher directly addresses these challenges by making course relationships transparent,
+                comparable, and easy to navigate.
+            </p>
+        </section>
+
+        <!-- SECTION: Methodology -->
+        <section class="info-section">
+            <h2 class="section-heading">Methodology</h2>
+
+            <h3 class="subheading">Data Collection</h3>
+            <p class="info-text">
+                Because UC course data has no API or unified source, we scraped catalogs using Selenium to handle dynamic,
+                JavaScript-heavy pages. Each campus had different HTML structures, requiring custom scraping and cleaning 
+                workflows. We compiled structured datasets for UC Davis, UCLA, UC Irvine, and UC Santa Cruz with fields such 
+                as codes, titles, descriptions, prerequisites, units, and cross-listings.
+            </p>
+
+            <h3 class="subheading">Evaluation Set</h3>
+            <p class="info-text">
+                We created a manually annotated dataset of 150 course pairs labeled as equivalent (2), similar (1), 
+                or unrelated (0). This benchmark allowed us to measure how accurately embeddings captured course-level 
+                semantics.
+            </p>
+
+            <h3 class="subheading">Embedding Testing</h3>
+            <p class="info-text">
+                Six leading models were evaluated using cosine similarity and Spearman correlation. 
+                bge-base-en-v1.5 delivered the strongest performance and was selected for encoding all course descriptions.
+            </p>
+
+            <h3 class="subheading">Prerequisite Graph Construction</h3>
+            <p class="info-text">
+                Prerequisite text was parsed into structured graphs using regex pattern extraction and virtual OR-nodes.
+                Graphs were built using NetworkX, served through Flask, and visualized in the front end using Plotly. 
+                A hierarchical layout with barycenter ordering improved clarity and reduced visual clutter.
+            </p>
+        </section>
+
+        <!-- SECTION: Results -->
+        <section class="info-section">
+            <h2 class="section-heading">Results & Findings</h2>
+            <p class="info-text">
+                The bge-base-en-v1.5 embedding model achieved the highest Spearman correlation, AUC, and accuracy in identifying
+                strong course matches. While e5-large-v2 performed slightly better for partially similar courses, overall ranking
+                alignment was superior with BGE.
+            </p>
+            <p class="info-text">
+                The prerequisite graphs generated clean, readable visualizations. Users can adjust depth, view hover-based details,
+                and click nodes to explore connected prerequisite pathways efficiently. For example, classes such as MAT 22A and 
+                STA 131A at UC Davis show how structural patterns, bottlenecks, and alternative pathways become more apparent 
+                through deeper graph layers.
+            </p>
+        </section>
+
+        <!-- SECTION: Impact -->
+        <section class="info-section">
+            <h2 class="section-heading">Impact</h2>
+            <p class="info-text">
+                UC Course Matcher provides a transparent, centralized way to explore UC course information. Transfer students can
+                identify equivalent or highly similar courses, helping reduce redundant coursework and uncertainty. Within 
+                campuses, prerequisite graphs give students a clear understanding of course sequencing and program structure. 
+                Additionally, faculty gain more insight into the background preparation of incoming students. The framework can be 
+                expanded to include additional campuses, larger evaluation sets, and broader compatibility analysis across programs.
+            </p>
+        </section>
+
+    </div>
+
+</body>
+</html>
