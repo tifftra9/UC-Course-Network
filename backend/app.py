@@ -368,6 +368,18 @@ def search():
         key = (campus, cid)
         canon_id = code_to_canonical.get(key)
 
+        print("==== DEBUG CANONICAL LOOKUP ====")
+        print("Campus:", campus)
+        print("CID:", cid)
+        print("Lookup Key:", key)
+        print("Canon ID:", canon_id)
+        print("Embeddings Loaded:", embeddings is not None)
+        print("Canonical Index Size:", len(canonical_index_by_id))
+        print("Canonical DF Size:", len(canonical_df))
+        print("Code to Canonical Size:", len(code_to_canonical))
+        print("================================")
+
+
         if (embeddings is not None and canon_id in canonical_index_by_id):
             canon_idx = canonical_index_by_id[canon_id]
             target_emb = embeddings[canon_idx].unsqueeze(0)
