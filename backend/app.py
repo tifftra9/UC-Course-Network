@@ -96,6 +96,8 @@ if not canonical_df.empty:
     for idx, row in canonical_df.iterrows():
         cid = int(row["Canonical_ID"])
         canonical_to_row[cid] = row.to_dict()
+        canonical_index_by_id[cid] = idx   
+
 
 if not df.empty:
     df['Course_ID'] = (df['Subject_Code'].fillna('') + df['Course_Code'].fillna('').astype(str)).apply(normalize_course_id)
