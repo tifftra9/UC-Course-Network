@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.1.0-cpu
+FROM pytorch/pytorch:2.1.0-cpu-py3.10
 
 WORKDIR /app
 
