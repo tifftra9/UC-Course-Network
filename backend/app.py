@@ -369,9 +369,11 @@ def search():
 
             resp["canonical"] = {
                 "canonical_id": canon_id,
+                "subjects": canonical_to_row[canon_id].get("Subject", ""),
                 "codes": canonical_to_codes[canon_id],
                 "title": canonical_to_row[canon_id]["Title"],
                 "description": canonical_to_row[canon_id]["Course Description"],
+                "prerequisites": prereq_text if pd.notna(prereq_text) else "None"
             }
             
             sim_res = {}
